@@ -14,8 +14,9 @@ bit_array(0b1100001)
 a
 ```
 **how to download it**
+
 run the folowing bash command
-bash
+
 ```
 git clone https://github.com/helloadhavan/bin.git
 ```
