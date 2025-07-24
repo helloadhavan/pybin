@@ -1,12 +1,6 @@
 import builtins
-import os
-from typing import Literal, Union, BinaryIO
-
-pattern = {0: ' ', 1: '0', 2: 'a', 3: 'b', 4: 'c', 5: 'd', 6: 'e', 7: 'f', 8: 'g', 9: 'h', 10: 'i', 11: 'j', 12: 'k', 13: 'l', 14: 'm', 15: 'n', 16: 'o', 17: 'p', 18: 'q', 19: 'r', 20: 's', 21: 't', 22: 'u', 23: 'v', 24: 'w', 25: 'x', 26: 'y', 27: 'z', 28: 'A', 29: 'B', 30: 'C', 31: 'D', 32: 'E', 33: 'F', 34: 'G', 35: 'H', 36: 'I', 37: 'J', 38: 'K', 39: 'L', 40: 'M', 41: 'N', 42: 'O', 43: 'P', 44: 'Q', 45: 'R', 46: 'S', 47: 'T', 48: 'U', 49: 'V', 50: 'W', 51: 'X', 52: 'Y', 53: 'Z', 54: '{', 55: '}', 56: '1', 57: '2', 58: '3', 59: '4', 60: '5', 61: '6', 62: '7', 63: '8', 64: '9', 65: '"', 66: ':', 67: ';', 68: '`', 69: '/', 70: '*', 71: '-', 72: '+', 73: "\\", 74: ")", 75: "(", 76: ",", 77: "."}
-pattern2 = {' ': 0, '0': 1, 'a': 2, 'b': 3, 'c': 4, 'd': 5, 'e': 6, 'f': 7, 'g': 8, 'h': 9, 'i': 10, 'j': 11, 'k': 12, 'l': 13, 'm': 14, 'n': 15, 'o': 16, 'p': 17, 'q': 18, 'r': 19, 's': 20, 't': 21, 'u': 22, 'v': 23, 'w': 24, 'x': 25, 'y': 26, 'z': 27, 'A': 28, 'B': 29, 'C': 30, 'D': 31, 'E': 32, 'F': 33, 'G': 34, 'H': 35, 'I': 36, 'J': 37, 'K': 38, 'L': 39, 'M': 40, 'N': 41, 'O': 42, 'P': 43, 'Q': 44, 'R': 45, 'S': 46, 'T': 47, 'U': 48, 'V': 49, 'W': 50, 'X': 51, 'Y': 52, 'Z': 53, '{': 54, '}': 55, '1': 56, '2': 57, '3': 58, '4': 59, '5': 60, '6': 61, '7': 62, '8': 63, '9': 64, '"': 65, ':': 66, ';': 67, '`': 68, '/': 69, '*': 70, '-': 71, '+': 72, "\\": 73, ")": 74, "(": 75, ",": 76, ".": 77}
-image = {0: ' ', 1: '0', 2: '1', 3: '2', 4: '3', 5: '4', 6: '5', 7: '6', 8: '7', 9: '8', 10: '9', 11: '0', 12: '(', 13: ')', 14: ',', 15: '.'}
-image2 = {' ': 0, '0': 11, '1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 9, '9': 10, '(': 12, ')': 13, ',': 14, '.': 15}
-
+from os import PathLike, path
+from typing import Literal, Union, Optional
 
 class bit_array(object):
     def __init__(self, bits: str | int):
@@ -29,7 +23,12 @@ class bit_array(object):
         elif format == "base15":
             return hex(int(self.bits, 2))
         elif format == "ASCII":
-            return chr(int(self.bits, 2))
+            value = self.bits[2:]
+            if len(value) % 8 != 0:
+                raise ValueError("Bit length not divisible by 8 for ASCII decoding.")
+            chars = [chr(int(value[i:i + 8], 2)) for i in range(0, len(value), 8)]
+            return ''.join(chars)
+
         elif format == "bytearray":
             result = bytearray()
             value = self.bits[2:]
@@ -39,6 +38,14 @@ class bit_array(object):
                 result.append(int(value[i:i+8], 2))
             return result
 
+    def split(self, bit: Union["bit_array", str, int]):
+        if isinstance(bit, str):
+            self.bits = "0b" + self.bits[2:].split(bit)
+        elif isinstance(bit, int):
+            self.bits = self.bits.split(str(bin(bit)))
+        elif isinstance(bit, bit_array):
+            self.bits = self.bits.split(bit.bits)
+
     @staticmethod
     def encode(format: Literal["ASCII", "base10", "base15", "bytearray"], value: int | str | bytearray):
         if format == "base10":
@@ -46,7 +53,11 @@ class bit_array(object):
         elif format == "base15":
             return bit_array(bin(int(value, 16)))
         elif format == "ASCII":
-            return bit_array(bin(ord(value)))
+            if not isinstance(value, str):
+                raise ValueError("ASCII encoding requires a string.")
+            result = "".join(f"{ord(c):08b}" for c in value)
+            return bit_array("0b" + result)
+
         elif format == "bytearray":
             result = ""
             for i in value:
@@ -73,86 +84,103 @@ class bit_array(object):
     def __repr__(self):
         return f"bit_array({self.bits})"
 
+class open(object):
+    def __init__(
+        self,
+        file: Union[PathLike[str], str],
+        mode: Literal["w", "r"],
+        decoding: Optional[Literal["ASCII", "base10", "base15", "bytearray"]] = None,
+        buffering: bool = True
+    ):
+        self.buffer = None
+        self.mode = mode
+        self.decoding = decoding
+        self.allow_buffer = buffering
+        self.file = builtins.open(file, mode + "b")
 
-class file(object):
-    def __init__(self, object: BinaryIO, type: Literal["image", "text", "custom"]) -> None:
-        self.object = object
-        self.type = type
+    def write(self, data: Union[bytearray, "bit_array"]):
+        if self.allow_buffer:
+            self.buffer = data
+        if isinstance(data, bit_array):
+            self.file.write(data.decode("bytearray"))
+        elif isinstance(data, bytearray):
+            self.file.write(data)
+        else:
+            raise TypeError(f"Unsupported type for write: {type(data)}")
 
-    def read(self) -> str | None:
-        if self.type == "image":
-            raw = self.object.read()
-            bits = bit_array.encode("bytearray", raw)
-            raw_bits = bits.bits[2:]  # Strip '0b'
-            result = ""
-            for i in range(0, len(raw_bits), 8):
-                byte = raw_bits[i:i + 8]
-                if len(byte) < 8:
-                    continue
-                val = int(byte, 2)
-                ch = image.get(val, '?')
-                print(f"Byte: {byte} → val: {val} → char: '{ch}'")  # DEBUG
-                result += ch
-            return result
-        if self.type == "text":
-            raw = self.object.read()
-            bits = bit_array.encode("bytearray", raw).bits[2:]  # strip '0b'
+    def read(self):
+        raw = self.file.read()
+        data = bit_array.encode("bytearray", raw)
+        if self.allow_buffer:
+            self.buffer = data
+        if self.decoding:
+            return data.decode(self.decoding)
+        return data
 
-            result = ""
-            for i in range(0, len(bits), 7):
-                chunk = bits[i:i + 7]
-                if len(chunk) < 7:
-                    continue
-                val = int(chunk, 2)
-                char = pattern.get(val, '?')
-                result += char
-            return result
+    @staticmethod
+    def compress(data: bytearray | bit_array, size: int = None, encoding: Literal["ASCII", "base10", "base15", "bytearray"] = "bytearray") -> None | bytearray | int | str:
+        if isinstance(data, bit_array):
+            if size is None:
+                raise ValueError("Size must be specified when using bit_array.")
+            raw = data.decode("bytearray")
+        elif isinstance(data, bytearray):
+            if size is None:
+                raise ValueError("Size must be specified when using bytearray.")
+            raw = data
+        else:
+            raise TypeError("data must be a bytearray or bit_array")
 
-    def write(self, data: tuple[int, int, int] | str):
-        if self.type == "image":
-            d = ""
-            for char in data:
-                val = image2.get(char)
-                if val is None:
-                    print(f"Unmapped character during write: {char}")
-                    continue
-                bits = format(val, "08b")
-                print(f"Char '{char}' -> val: {val} -> bits: {bits}")  # DEBUG
-                d += bits
-            d = bit_array("0b" + d)
-            bytes_data = d.decode("bytearray")
-            self.object.write(bytes_data)
+        result = bytearray()
 
-        elif self.type == "text":
-            bits = ""
-            for char in data:
-                val = pattern2.get(char)
-                if val is None:
-                    print(f"Skipping unmapped char: {char}")
-                    continue
-                bits += format(val, "07b")
+        for row_start in range(0, len(raw), size):
+            for i in range(min(size, len(raw) - row_start)):
+                idx = row_start + i
+                left = raw[idx - 1] if i > 0 else 0
+                result.append((raw[idx] - left) % 256)
 
-            while len(bits) % 8 != 0:
-                bits += "0"
+        return bit_array(bit_array.encode("bytearray", result).bits).decode(encoding)
 
-            byte_data = bytearray()
-            for i in range(0, len(bits), 8):
-                byte = bits[i:i + 8]
-                byte_data.append(int(byte, 2))
+    @staticmethod
+    def decompress(data: bytearray | bit_array, size: int, decoding: Literal["ASCII", "base10", "base15", "bytearray"] = "bytearray") -> None | bytearray | int | str:
+        if isinstance(data, bit_array):
+            raw = data.decode("bytearray")
+        elif isinstance(data, bytearray):
+            raw = data
+        else:
+            raise TypeError("data must be a bytearray or bit_array")
 
-            self.object.write(byte_data)
+        result = bytearray()
+
+        for row_start in range(0, len(raw), size):
+            for i in range(size):
+                idx = row_start + i
+                left = result[idx - 1] if i > 0 else 0
+                result.append((raw[idx] + left) % 256)
+
+        return bit_array(bit_array.encode("bytearray", result).bits).decode(decoding)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.file.close()
 
 if __name__ == "__main__":
-    f = open("test.bin", mode="w+b")
-    b = file(f, "text")
-    b.write('(255, 255, 255, 255), (0, 0, 0, 0.25)')
-    f.close()
+    def file():
+        value = bytearray([97, 98])
+        with open("example.bin", "w") as f:
+            f.write(bit_array.encode("bytearray", value))
 
-    f = open("test.bin", mode="r+b")
-    b = file(f, "text")
-    print(b.read())
-    f.close()
+        with open("example.bin", "r", decoding="bytearray") as f:
+            print(f.read())
 
-    print(os.path.getsize("test.bin"))
-    print(os.path.getsize("data.txt"))
+        print(f"{path.getsize("example.bin") / len(value)}")
+
+    with builtins.open("py.py", "r") as f:
+        value = f.read()
+    print(value)
+    original = bit_array.encode("ASCII", value)
+    compressed = open.compress(original, size=5, encoding="bytearray")
+    print(f"{original} -> {bit_array.encode("bytearray", compressed)} diff {len(original) - len(compressed) * 8}")
+
 
