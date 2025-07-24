@@ -164,23 +164,3 @@ class open(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.file.close()
-
-if __name__ == "__main__":
-    def file():
-        value = bytearray([97, 98])
-        with open("example.bin", "w") as f:
-            f.write(bit_array.encode("bytearray", value))
-
-        with open("example.bin", "r", decoding="bytearray") as f:
-            print(f.read())
-
-        print(f"{path.getsize("example.bin") / len(value)}")
-
-    with builtins.open("py.py", "r") as f:
-        value = f.read()
-    print(value)
-    original = bit_array.encode("ASCII", value)
-    compressed = open.compress(original, size=5, encoding="bytearray")
-    print(f"{original} -> {bit_array.encode("bytearray", compressed)} diff {len(original) - len(compressed) * 8}")
-
-
