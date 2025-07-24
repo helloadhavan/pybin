@@ -14,7 +14,7 @@ bit_array(0b1100001)
 a
 ```
 **how to download it**
-
+https://github.com/helloadhavan/pybin/blob/main/README.md?plain=1
 run the folowing bash command
 
 ```
