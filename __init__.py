@@ -1,6 +1,7 @@
 import builtins
-from os import PathLike, path
+from os import PathLike
 from typing import Literal, Union, Optional
+
 
 class bit_array(object):
     def __init__(self, bits: str | int):
@@ -15,7 +16,7 @@ class bit_array(object):
         return len(self.bits[2:])
 
     def __getitem__(self, idx):
-        return self.bits[2:][idx]
+        return bit_array(self.bits[2:][idx])
 
     def decode(self, format: Literal["ASCII", "base10", "base15", "bytearray"]):
         if format == "base10":
@@ -164,3 +165,5 @@ class open(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.file.close()
+
+print("1010"[1:4])
